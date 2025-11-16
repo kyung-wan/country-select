@@ -436,7 +436,8 @@
                     countryName.className = 'country-name';
                     countryName.textContent = country;
                     
-                    const flag = document.createElement('div');
+                    const flag = document.createElement('img');
+                    flag.className = 'flag-image';
                     flag.src = `flags/${country}.svg`;  // 파일 이름은 국가명과 동일하게!
                     flag.alt = `${country} 국기`;
                     
