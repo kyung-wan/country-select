@@ -2,56 +2,65 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flag Puzzle Signup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flag Puzzle Signup (Mobile Optimized)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #F5F5F7;
             --text-main: #1D1D1F;
             --text-sub: #86868B;
-            --shadow-piece: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-            --shadow-drag: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.2));
+            --shadow-piece: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+            --shadow-drag: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
         }
 
         body {
             margin: 0;
-            overflow: hidden;
+            overflow: hidden; /* 스크롤 방지 */
             background-color: var(--bg-color);
             font-family: 'Inter', 'Noto Sans KR', sans-serif;
             user-select: none;
+            -webkit-user-select: none; /* 사파리 선택 방지 */
             color: var(--text-main);
+            /* 모바일 제스처(새로고침 등) 방지 */
+            touch-action: none; 
+            overscroll-behavior: none;
         }
 
-        /* 안내 문구 */
+        /* 안내 문구 - 모바일 크기 조정 */
         #instruction {
             position: absolute;
-            top: 40px; left: 50%; transform: translateX(-50%);
+            top: 20px; left: 50%; transform: translateX(-50%);
             text-align: center; z-index: 100; pointer-events: none;
             opacity: 0; animation: fadeIn 1.5s ease-out forwards;
-            width: 100%;
+            width: 90%;
         }
         #instruction h2 {
-            font-size: 14px; font-weight: 600; letter-spacing: 0.05em;
-            text-transform: uppercase; color: var(--text-sub); margin: 0 0 8px 0;
+            font-size: 12px; font-weight: 600; letter-spacing: 0.05em;
+            text-transform: uppercase; color: var(--text-sub); margin: 0 0 6px 0;
         }
         #instruction p {
-            font-size: 22px; font-weight: 400; color: var(--text-main);
-            margin: 0; letter-spacing: -0.02em; line-height: 1.4;
+            font-size: 18px; font-weight: 500; color: var(--text-main);
+            margin: 0; letter-spacing: -0.02em; line-height: 1.4; word-break: keep-all;
         }
         #instruction .highlight {
-            color: #FF3B30; font-weight: 600;
+            color: #FF3B30; font-weight: 700;
         }
 
         /* 퍼즐 조각 */
         .puzzle-piece {
             position: absolute;
-            width: 80px; height: 60px;
+            /* 크기는 JS에서 동적으로 설정됨 */
             cursor: grab;
             filter: var(--shadow-piece);
-            transition: transform 0.1s, filter 0.2s; 
+            /* 모바일 성능을 위해 하드웨어 가속 유도 */
+            transform: translate3d(0,0,0);
+            transition: transform 0.1s linear, filter 0.2s; 
             background-repeat: no-repeat;
             box-sizing: border-box;
+            
+            /* 터치 영역 확보를 위해 약간의 투명 테두리 느낌 (선택사항) */
+            touch-action: none;
         }
 
         .puzzle-piece.fading {
@@ -60,7 +69,7 @@
 
         .puzzle-piece:active {
             cursor: grabbing; 
-            transform: scale(1.1); 
+            transform: scale(1.1) translate3d(0,0,0); 
             filter: var(--shadow-drag); 
             z-index: 9999 !important;
             transition: none; 
@@ -73,14 +82,15 @@
 
         /* 토스트 메시지 */
         #toast {
-            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px);
-            background: rgba(255,255,255,0.9); color: #1D1D1F;
-            padding: 14px 28px; border-radius: 50px;
-            font-size: 15px; font-weight: 500;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: rgba(255,255,255,0.95); color: #1D1D1F;
+            padding: 12px 24px; border-radius: 50px;
+            font-size: 14px; font-weight: 600;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
             opacity: 0; pointer-events: none;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 3000;
             backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.05);
+            width: max-content; max-width: 90%; text-align: center;
         }
         #toast.show {
             opacity: 1; transform: translateX(-50%) translateY(0);
@@ -89,24 +99,25 @@
         /* 최종 결과 모달 */
         #modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px);
             z-index: 2000; justify-content: center; align-items: center;
             opacity: 0; transition: opacity 0.5s ease;
         }
         .modal-content {
-            background: white; padding: 60px 80px; border-radius: 40px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.12); text-align: center;
+            background: white; padding: 40px 30px; border-radius: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15); text-align: center;
+            width: 80%; max-width: 320px;
             transform: scale(0.95); animation: popUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
             border: 1px solid rgba(0,0,0,0.05);
         }
-        .modal-content h1 { font-size: 36px; margin: 0 0 12px 0; color: #1D1D1F; letter-spacing: -0.03em; }
-        .modal-content p { font-size: 18px; color: #86868B; margin-bottom: 40px; }
+        .modal-content h1 { font-size: 28px; margin: 0 0 10px 0; color: #1D1D1F; }
+        .modal-content p { font-size: 16px; color: #86868B; margin-bottom: 30px; }
         .confirm-btn {
             background: #1D1D1F; color: white; border: none;
-            padding: 18px 48px; font-size: 16px; border-radius: 20px;
-            cursor: pointer; font-weight: 600; transition: transform 0.2s, background 0.2s;
+            padding: 16px 0; width: 100%; font-size: 16px; border-radius: 18px;
+            cursor: pointer; font-weight: 600;
         }
-        .confirm-btn:hover { background: #333; transform: scale(1.02); }
+        .confirm-btn:active { background: #333; transform: scale(0.98); }
 
         @keyframes fadeIn { to { opacity: 1; } }
         @keyframes popUp { to { transform: scale(1); } }
@@ -118,7 +129,7 @@
 
     <div id="instruction">
         <h2>Nationality Selection</h2>
-        <p>자신의 국기가 <span class="highlight">아닌</span> 것을 맞춰 제거하세요.<br>마지막에 남은 국기가 국적으로 선택됩니다.</p>
+        <p>자신의 국기가 <span class="highlight">아닌</span> 퍼즐을 완성하여 제거하세요.</p>
     </div>
 
     <div id="toast"></div>
@@ -133,21 +144,36 @@
     </div>
 
     <script>
-        // --- 설정값 ---
+        // --- 모바일 최적화 크기 설정 ---
+        // 화면 너비를 기준으로 퍼즐 크기 동적 계산
+        const screenW = window.innerWidth;
+        const screenH = window.innerHeight;
+
         const ROWS = 3; 
         const COLS = 4;
-        const GRID_W = 60; 
-        const GRID_H = 40;
-        const TOTAL_W = COLS * GRID_W;
-        const TOTAL_H = ROWS * GRID_H;
-        
-        const PIECE_W = 80; 
-        const PIECE_H = 60;
-        const PAD_X = 10 / PIECE_W;
-        const PAD_Y = 10 / PIECE_H;
-        const OFFSET_X = 10; 
-        const OFFSET_Y = 10;
 
+        // 모바일에서는 화면의 85% 정도를 꽉 채우는 국기 크기 설정
+        // PC에서는 너무 크지 않게 최대폭 제한
+        const isMobile = screenW < 768;
+        const flagWidth = isMobile ? Math.min(screenW * 0.85, 350) : 360; // 국기 전체 가로
+        const flagHeight = flagWidth * (2/3); // 3:2 비율 유지
+
+        const GRID_W = flagWidth / COLS;
+        const GRID_H = flagHeight / ROWS;
+        
+        // 요철을 포함한 실제 조각 크기 (그리드보다 약 30% 더 큼)
+        const PIECE_W = GRID_W * 1.33; 
+        const PIECE_H = GRID_H * 1.5;
+        
+        // 여백 및 오프셋 계산 (SVG 경로 좌표용)
+        // 평평한 부분이 전체 조각에서 차지하는 비율을 역산
+        const offsetXPx = (PIECE_W - GRID_W) / 2;
+        const offsetYPx = (PIECE_H - GRID_H) / 2;
+        
+        const PAD_X = offsetXPx / PIECE_W;
+        const PAD_Y = offsetYPx / PIECE_H;
+
+        // --- 데이터 ---
         const allCountries = [
             { code: 'DE', name: '독일', file: '독일' },
             { code: 'RU', name: '러시아', file: '러시아' },
@@ -166,27 +192,18 @@
 
         const MAX_DISPLAY_COUNT = 5;
 
-        // ★ 수정됨: 한국 무조건 포함 로직 ★
+        // --- 한국 포함 랜덤 선택 ---
         function getRandomCountries() {
-            // 1. 한국(KR) 찾기
             const korea = allCountries.find(c => c.code === 'KR');
-            
-            // 2. 한국을 제외한 나머지 국가들
             const others = allCountries.filter(c => c.code !== 'KR');
-            
-            // 3. 나머지 국가들 랜덤 섞기
             const shuffledOthers = others.sort(() => 0.5 - Math.random());
-            
-            // 4. 한국 + 나머지 중에서 (MAX-1)개 선택 = 총 MAX개(5개)
             const selected = [korea, ...shuffledOthers.slice(0, MAX_DISPLAY_COUNT - 1)];
-            
-            // 5. 최종 리스트를 한 번 더 섞음 (한국이 항상 첫 번째에 나오지 않게)
             return selected.sort(() => 0.5 - Math.random());
         }
 
         const activeCountries = getRandomCountries();
 
-        // --- 이하 로직 동일 ---
+        // --- SVG 생성 (동일 로직) ---
         function generateShapesForCountry(code) {
             let vJoints = [], hJoints = [];
             for(let r=0; r<ROWS; r++) {
@@ -229,9 +246,11 @@
             return `L ${sx},${midY - neckH} C ${midX},${midY - headH} ${midX},${midY + headH} ${sx},${midY + neckH} L ${ex},${ey} `;
         }
 
+        // --- 초기화 ---
         function init() {
             const container = document.getElementById('puzzle-container');
             const defs = document.getElementById('svg-defs-container');
+            
             activeCountries.forEach(country => {
                 defs.innerHTML += generateShapesForCountry(country.code);
                 createPuzzleForCountry(country, container);
@@ -247,15 +266,21 @@
                     piece.dataset.r = r; piece.dataset.c = c;
                     
                     piece.style.backgroundImage = `url('flags/${country.file}.svg')`;
-                    piece.style.backgroundSize = `${TOTAL_W}px ${TOTAL_H}px`;
+                    piece.style.backgroundSize = `${flagWidth}px ${flagHeight}px`;
+                    piece.style.width = `${PIECE_W}px`;
+                    piece.style.height = `${PIECE_H}px`;
+
                     piece.style.clipPath = `url(#clip-${country.code}-${r}-${c})`;
                     
-                    const bgX = -(c * GRID_W) + OFFSET_X;
-                    const bgY = -(r * GRID_H) + OFFSET_Y;
+                    // 배경 위치 조정 (요철 오프셋 고려)
+                    const bgX = -(c * GRID_W) + offsetXPx;
+                    const bgY = -(r * GRID_H) + offsetYPx;
                     piece.style.backgroundPosition = `${bgX}px ${bgY}px`;
 
-                    const x = Math.random() * (window.innerWidth - PIECE_W);
-                    const y = Math.random() * (window.innerHeight - PIECE_H);
+                    // 랜덤 배치 (화면 밖으로 나가지 않도록 마진 둠)
+                    const margin = 10;
+                    const x = Math.random() * (window.innerWidth - PIECE_W - margin * 2) + margin;
+                    const y = Math.random() * (window.innerHeight - PIECE_H - margin * 2) + margin;
                     piece.style.left = `${x}px`; piece.style.top = `${y}px`;
 
                     piece.addEventListener('mousedown', onMouseDown);
@@ -265,41 +290,88 @@
             }
         }
 
-        let activePiece = null, dragOffsetX = 0, dragOffsetY = 0;
-        const SNAP_TOLERANCE = 25;
+        // --- 드래그 & 스냅 로직 (모바일 오프셋 적용) ---
+        let activePiece = null;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        const SNAP_TOLERANCE = 20; // 스냅 감도 조절
+        
+        // 모바일 터치 시 손가락에 가리지 않게 하기 위한 Y축 오프셋
+        const TOUCH_Y_OFFSET = isMobile ? -50 : 0; 
 
         function onMouseDown(e) { startDrag(e.target, e.clientX, e.clientY); }
-        function onTouchStart(e) { e.preventDefault(); startDrag(e.target, e.touches[0].clientX, e.touches[0].clientY); }
+        function onTouchStart(e) { 
+            e.preventDefault(); 
+            // 멀티터치 방지: 첫 번째 손가락만 인식
+            startDrag(e.target, e.touches[0].clientX, e.touches[0].clientY); 
+        }
+
         function startDrag(el, cx, cy) {
             if(el.classList.contains('snapped')) return;
             activePiece = el; 
             const r = activePiece.getBoundingClientRect();
-            dragOffsetX = cx - r.left; dragOffsetY = cy - r.top;
+            
+            // 클릭한 위치와 요소의 좌상단 차이 계산
+            dragOffsetX = cx - r.left; 
+            dragOffsetY = cy - r.top;
+            
             activePiece.style.zIndex = 1000;
-            document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
-            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onMouseUp);
+            
+            document.addEventListener('mousemove', onMouseMove); 
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchmove', onTouchMove, {passive: false}); 
+            document.addEventListener('touchend', onMouseUp);
         }
+
         function onMouseMove(e) { if (!activePiece) return; movePiece(e.clientX, e.clientY); }
         function onTouchMove(e) { if (!activePiece) return; e.preventDefault(); movePiece(e.touches[0].clientX, e.touches[0].clientY); }
-        function movePiece(cx, cy) { activePiece.style.left = (cx - dragOffsetX) + 'px'; activePiece.style.top = (cy - dragOffsetY) + 'px'; }
+
+        function movePiece(cx, cy) { 
+            // 터치 오프셋 적용: 손가락보다 위에 오도록
+            const yPos = cy - dragOffsetY + TOUCH_Y_OFFSET;
+            activePiece.style.left = (cx - dragOffsetX) + 'px'; 
+            activePiece.style.top = yPos + 'px'; 
+        }
+
         function onMouseUp() {
-            if (!activePiece) return; checkSnap(activePiece);
-            activePiece.style.zIndex = ''; activePiece = null;
-            document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
-            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onMouseUp);
+            if (!activePiece) return; 
+            
+            // 드래그 종료 시 오프셋 제거 및 스냅 확인을 위해 좌표 보정 필요?
+            // 일단 현재 위치에서 스냅 체크
+            checkSnap(activePiece);
+            
+            activePiece.style.zIndex = ''; 
+            activePiece = null;
+            document.removeEventListener('mousemove', onMouseMove); 
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMove); 
+            document.removeEventListener('touchend', onMouseUp);
         }
 
         function checkSnap(piece) {
             const r = parseInt(piece.dataset.r), c = parseInt(piece.dataset.c), code = piece.dataset.country;
             const siblings = document.querySelectorAll(`.puzzle-piece[data-country="${code}"]`);
+            
+            // 현재 조각의 좌표 (오프셋 포함된 상태)
+            const rect = piece.getBoundingClientRect();
+
             siblings.forEach(sib => {
                 if (sib === piece) return;
                 const tr = parseInt(sib.dataset.r), tc = parseInt(sib.dataset.c);
-                const idealDX = (tc - c) * GRID_W, idealDY = (tr - r) * GRID_H;
-                const rect = piece.getBoundingClientRect(), sibRect = sib.getBoundingClientRect();
                 
-                if (Math.abs((sibRect.left - rect.left) - idealDX) < SNAP_TOLERANCE &&
-                    Math.abs((sibRect.top - rect.top) - idealDY) < SNAP_TOLERANCE) {
+                // 이상적인 거리
+                const idealDX = (tc - c) * GRID_W;
+                const idealDY = (tr - r) * GRID_H;
+                
+                const sibRect = sib.getBoundingClientRect();
+                
+                // 거리 차이 계산
+                const currentDX = sibRect.left - rect.left;
+                const currentDY = sibRect.top - rect.top;
+
+                if (Math.abs(currentDX - idealDX) < SNAP_TOLERANCE &&
+                    Math.abs(currentDY - idealDY) < SNAP_TOLERANCE) {
+                    
+                    // 스냅!
                     piece.style.left = (sibRect.left - idealDX) + 'px';
                     piece.style.top = (sibRect.top - idealDY) + 'px';
                     checkCompletion(code);
@@ -311,10 +383,18 @@
             const pieces = Array.from(document.querySelectorAll(`.puzzle-piece[data-country="${code}"]`));
             const base = pieces[0], baseR = parseInt(base.dataset.r), baseC = parseInt(base.dataset.c), baseRect = base.getBoundingClientRect();
             let complete = true;
+            
+            // 약간의 오차 허용 범위
+            const TOLERANCE = 5; 
+
             for(let i=1; i<pieces.length; i++) {
                 const p = pieces[i], r = parseInt(p.dataset.r), c = parseInt(p.dataset.c), rect = p.getBoundingClientRect();
-                const idealX = baseRect.left + (c - baseC) * GRID_W, idealY = baseRect.top + (r - baseR) * GRID_H;
-                if (Math.abs(rect.left - idealX) > 5 || Math.abs(rect.top - idealY) > 5) { complete = false; break; }
+                const idealX = baseRect.left + (c - baseC) * GRID_W;
+                const idealY = baseRect.top + (r - baseR) * GRID_H;
+                
+                if (Math.abs(rect.left - idealX) > TOLERANCE || Math.abs(rect.top - idealY) > TOLERANCE) { 
+                    complete = false; break; 
+                }
             }
 
             if(complete) {
@@ -324,18 +404,18 @@
                 });
                 
                 const countryName = activeCountries.find(c => c.code === code).name;
-                showToast(`${countryName} 국기 제거 완료`);
+                showToast(`${countryName} 국기 제거`);
 
                 setTimeout(() => {
                     pieces.forEach(p => {
                         p.style.opacity = '0';
-                        p.style.transform = 'scale(0.8) translateY(50px)';
+                        p.style.transform = 'scale(0.8) translateY(30px)';
                     });
                     setTimeout(() => {
                         pieces.forEach(p => p.remove());
                         checkRemainingCountries();
                     }, 800);
-                }, 500);
+                }, 400);
             }
         }
 
@@ -347,11 +427,12 @@
                 const winnerCode = [...remainingCodes][0];
                 const winnerName = activeCountries.find(c => c.code === winnerCode).name;
                 
+                // 남은 조각들 강조
                 const remainingPieces = document.querySelectorAll('.puzzle-piece');
                 remainingPieces.forEach(p => {
                     p.style.transition = 'all 1s ease';
                     p.style.zIndex = 2000;
-                    p.style.filter = 'drop-shadow(0 0 30px rgba(0,0,0,0.2))';
+                    p.style.filter = 'drop-shadow(0 0 30px rgba(29, 29, 31, 0.3))';
                 });
 
                 setTimeout(() => { showFinalModal(winnerName); }, 1000);
