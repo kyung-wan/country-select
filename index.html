@@ -3,624 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>국가 선택 - 주사위 게임</title>
+    <title>국기 퍼즐 회원가입 (Real Shapes)</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            font-family: 'Noto Sans KR', sans-serif;
+            user-select: none;
         }
 
-        .container {
-            text-align: center;
+        #instruction {
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            color: white; text-align: center; z-index: 1000; pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        h1 {
-            color: black;
-            margin-bottom: 30px;
-            font-size: 28px;
-            font-weight: 300;
-        }
-
-        .game-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(5, 120px);
-            grid-template-rows: repeat(3, 140px);
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-
-        .cell {
-            background-color: white;
-            border: 2px solid black;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-            position: relative;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-
-        .cell:hover {
-            background-color: #f0f0f0;
-        }
-
-        .cell:has(.country-name):hover {
-            background-color: #f0f0f0;
-        }
-
-        .cell:not(:has(.country-name)):hover {
-            background-color: transparent;
-        }
-
-        .cell.selected {
-            background-color: #e0e0e0;
-        }
-
-        .country-name {
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: black;
-        }
-
-        .flag-placeholder {
+        /* --- 퍼즐 조각 스타일 업데이트 --- */
+        .puzzle-piece {
+            position: absolute;
+            /* 원래 격자 크기(60x40)보다 조각을 더 크게 만듭니다.
+               튀어나온 요철(Tab)을 표현하기 위한 여백이 필요하기 때문입니다.
+            */
             width: 80px;
             height: 60px;
-            border: 1px solid #ccc;
+            
+            /* 전체 국기 크기도 비율에 맞춰 조정 */
+            background-size: 180px 120px; 
+            
+            cursor: grab;
+            /* clip-path를 사용하면 기본 box-shadow가 잘리므로 filter drop-shadow 사용 */
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.5));
+            transition: transform 0.1s;
+            
+            /* flex 설정은 텍스트 표시용 (이미지 사용시 제거 가능) */
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            color: rgba(255,255,255,0.8);
             font-size: 10px;
-            color: #999;
-            background-color: #f9f9f9;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
         }
 
-        .flag-image {
-    width: 80px;
-    height: 60px;
-    object-fit: cover;
-    border: 1px solid #ccc;
+        .puzzle-piece:active {
+            cursor: grabbing;
+            transform: scale(1.05); /* 클릭 시 약간 커짐 */
+            z-index: 999 !important;
         }
 
-        .pawn {
-            position: absolute;
-            width: 30px;
-            height: 40px;
-            z-index: 10;
-            transition: all 0.4s ease-in-out;
+        .snapped {
             pointer-events: none;
+            filter: none; /* 스냅되면 그림자 제거 */
+            z-index: 1;
         }
 
-        .pawn svg {
-            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
-        }
+        /* --- SVG Clip-Path 연결 --- */
+        /* 각 위치별(행-열)로 미리 정의된 SVG 경로를 clip-path로 지정합니다.
+           이 경로들이 실제 퍼즐 모양을 만듭니다.
+        */
+        .pos-0-0 { clip-path: url(#clip-0-0); }
+        .pos-0-1 { clip-path: url(#clip-0-1); }
+        .pos-0-2 { clip-path: url(#clip-0-2); }
+        .pos-1-0 { clip-path: url(#clip-1-0); }
+        .pos-1-1 { clip-path: url(#clip-1-1); }
+        .pos-1-2 { clip-path: url(#clip-1-2); }
+        .pos-2-0 { clip-path: url(#clip-2-0); }
+        .pos-2-1 { clip-path: url(#clip-2-1); }
+        .pos-2-2 { clip-path: url(#clip-2-2); }
 
-        .dice-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 20;
-            perspective: 1200px;
-            perspective-origin: 50% 30%;
-        }
 
-        .dice-wrapper {
-            width: 50px;
-            height: 50px;
-            position: relative;
-            transform-style: preserve-3d;
-            cursor: pointer;
-            transition: transform 0.2s;
-            --land-x: 0px;
-            --land-y: 0px;
-            --final-rot-x: 0deg;
-            --final-rot-y: 0deg;
-            --final-rot-z: 270deg;
+        /* 결과 모달 (이전과 동일) */
+        #modal {
+            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 2000;
+            justify-content: center; align-items: center; flex-direction: column; color: white;
         }
-
-        .dice-wrapper:hover {
-            transform: scale(1.1);
-        }
-
-        .dice-wrapper.rolling {
-            animation: roll3dDiagonal 1.2s ease-out forwards;
-        }
-
-        @keyframes roll3dDiagonal {
-            0% {
-                transform: 
-                    translateX(-150px) translateY(-100px) translateZ(100px)
-                    rotateX(0deg) rotateY(0deg) rotateZ(0deg);
-            }
-            15% {
-                transform: 
-                    translateX(-100px) translateY(-70px) translateZ(80px)
-                    rotateX(calc(var(--final-rot-x) * 0.15)) rotateY(calc(var(--final-rot-y) * 0.15)) rotateZ(45deg);
-            }
-            30% {
-                transform: 
-                    translateX(-50px) translateY(-40px) translateZ(60px)
-                    rotateX(calc(var(--final-rot-x) * 0.3)) rotateY(calc(var(--final-rot-y) * 0.3)) rotateZ(90deg);
-            }
-            45% {
-                transform: 
-                    translateX(0px) translateY(-10px) translateZ(40px)
-                    rotateX(calc(var(--final-rot-x) * 0.5)) rotateY(calc(var(--final-rot-y) * 0.5)) rotateZ(135deg);
-            }
-            60% {
-                transform: 
-                    translateX(calc(var(--land-x) * 0.5)) translateY(calc(var(--land-y) * 0.5)) translateZ(20px)
-                    rotateX(calc(var(--final-rot-x) * 0.7)) rotateY(calc(var(--final-rot-y) * 0.7)) rotateZ(180deg);
-            }
-            75% {
-                transform: 
-                    translateX(calc(var(--land-x) * 0.8)) translateY(calc(var(--land-y) * 0.8)) translateZ(10px)
-                    rotateX(calc(var(--final-rot-x) * 0.85)) rotateY(calc(var(--final-rot-y) * 0.85)) rotateZ(225deg);
-            }
-            85% {
-                transform: 
-                    translateX(var(--land-x)) translateY(var(--land-y)) translateZ(0px)
-                    rotateX(var(--final-rot-x)) rotateY(var(--final-rot-y)) rotateZ(var(--final-rot-z));
-            }
-            92% {
-                transform: 
-                    translateX(var(--land-x)) translateY(var(--land-y)) translateZ(-5px)
-                    rotateX(var(--final-rot-x)) rotateY(var(--final-rot-y)) rotateZ(var(--final-rot-z));
-            }
-            96% {
-                transform: 
-                    translateX(var(--land-x)) translateY(var(--land-y)) translateZ(8px)
-                    rotateX(var(--final-rot-x)) rotateY(var(--final-rot-y)) rotateZ(var(--final-rot-z));
-            }
-            100% {
-                transform: 
-                    translateX(var(--land-x)) translateY(var(--land-y)) translateZ(0px)
-                    rotateX(var(--final-rot-x)) rotateY(var(--final-rot-y)) rotateZ(var(--final-rot-z));
-            }
-        }
-
-        .dice-face {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            background-color: white;
-            border: 2px solid black;
-            border-radius: 6px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(3, 1fr);
-            gap: 3px;
-            padding: 6px;
-            backface-visibility: hidden;
-        }
-
-        .dice-dot {
-            width: 6px;
-            height: 6px;
-            background-color: black;
-            border-radius: 50%;
-        }
-
-        .dice-dot.hidden {
-            visibility: hidden;
-        }
-
-        /* 주사위 각 면의 3D 위치 */
-        .dice-face-1 {
-            transform: rotateY(0deg) translateZ(25px);
-        }
-
-        .dice-face-2 {
-            transform: rotateX(-90deg) translateZ(25px);
-        }
-
-        .dice-face-3 {
-            transform: rotateY(-90deg) translateZ(25px);
-        }
-
-        .dice-face-4 {
-            transform: rotateY(90deg) translateZ(25px);
-        }
-
-        .dice-face-5 {
-            transform: rotateX(90deg) translateZ(25px);
-        }
-
-        .dice-face-6 {
-            transform: rotateY(180deg) translateZ(25px);
-        }
-
-        .button {
-            background-color: white;
-            color: black;
-            border: 2px solid black;
-            padding: 12px 30px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 10px;
-        }
-
-        .button:hover {
-            background-color: black;
-            color: white;
-        }
-
-        .button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .message {
-            margin-top: 20px;
-            font-size: 18px;
-            color: black;
-            min-height: 30px;
-        }
-
-        .controls {
-            margin-top: 20px;
+        button {
+            padding: 10px 20px; margin-top: 20px; font-size: 16px; cursor: pointer;
+            background: #4CAF50; color: white; border: none; border-radius: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>출신 국가를 선택하세요</h1>
-        
-        <div class="game-wrapper">
-            <div class="grid" id="grid">
-                <!-- 3x5 그리드 생성 -->
-            </div>
-            
-            <!-- 말 (폰) -->
-            <div class="pawn" id="pawn">
-                <svg viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="15" cy="8" r="6" fill="white" stroke="black" stroke-width="2"/>
-                    <path d="M 10 14 Q 15 20, 20 14 L 18 32 L 12 32 Z" fill="white" stroke="black" stroke-width="2"/>
-                    <ellipse cx="15" cy="36" rx="8" ry="3" fill="white" stroke="black" stroke-width="2"/>
-                </svg>
-            </div>
-            
-            <!-- 주사위 -->
-            <div class="dice-container">
-                <div class="dice-wrapper" id="diceWrapper" onclick="rollDice()">
-                    <!-- Face 1 -->
-                    <div class="dice-face dice-face-1">
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                    </div>
-                    <!-- Face 2 -->
-                    <div class="dice-face dice-face-2">
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                    </div>
-                    <!-- Face 3 -->
-                    <div class="dice-face dice-face-3">
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                    </div>
-                    <!-- Face 4 -->
-                    <div class="dice-face dice-face-4">
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                    </div>
-                    <!-- Face 5 -->
-                    <div class="dice-face dice-face-5">
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                    </div>
-                    <!-- Face 6 -->
-                    <div class="dice-face dice-face-6">
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot"></div>
-                        <div class="dice-dot hidden"></div>
-                        <div class="dice-dot"></div>
-                    </div>
-                </div>
-            </div>
+
+    <svg width="0" height="0" style="position:absolute;">
+        <defs>
+            <clipPath id="clip-0-0" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0 Z"></path></clipPath>
+            <clipPath id="clip-0-1" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
+            <clipPath id="clip-0-2" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
+            <clipPath id="clip-1-0" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0 Z"></path></clipPath>
+            <clipPath id="clip-1-1" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
+            <clipPath id="clip-1-2" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
+            <clipPath id="clip-2-0" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0 V0 Z"></path></clipPath>
+            <clipPath id="clip-2-1" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
+            <clipPath id="clip-2-2" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
+        </defs>
+    </svg>
+
+    <div id="instruction">
+        <h2>국적 확인 퍼즐</h2>
+        <p>조각을 맞춰 국기를 완성하세요.</p>
+    </div>
+
+    <div id="puzzle-container"></div>
+
+    <div id="modal">
+        <h1 id="result-text">국기 완성!</h1>
+        <p id="result-sub">이 국가는 당신의 국적인가요?</p>
+        <div style="display:flex; gap:10px;">
+            <button onclick="confirmNationality(true)">내 국적입니다 (가입)</button>
+            <button onclick="confirmNationality(false)" style="background:#ff5555">아닙니다 (제거)</button>
         </div>
-        
-        <div class="controls">
-            <button class="button" onclick="confirmSelection()" id="confirmButton" disabled>국가 선택 완료</button>
-        </div>
-        
-        <div class="message" id="message"></div>
     </div>
 
     <script>
-        // 12개 국가 (한국, 중국, 일본, 미국 포함) - 가운데 3칸은 비움
+        // 1. 데이터 및 설정
+        // (테스트를 위해 국가 수를 줄였습니다. 실제 사용 시 원래 목록을 사용하세요)
         const countries = [
-            '호주', '시리아', '일본', '미국', '영국',
-            '케냐', null, null, null, '독일',
-            '중국', '인도', '브라질', '한국', '러시아'
+            { code: 'KR', name: '한국', color: '#003478' }, 
+            { code: 'US', name: '미국', color: '#3C3B6E' },
+            { code: 'JP', name: '일본', color: '#BC002D' },
+            // ... 나머지 국가들
         ];
 
-        let currentPosition = 0;
-        let isRolling = false;
-        let selectedCountry = '';
+        const ROWS = 3;
+        const COLS = 3;
+        // 원래 격자 크기 (배경 이미지 계산용)
+        const GRID_W = 60; 
+        const GRID_H = 40;
+        // 실제 조각 크기 (요철 포함 CSS 크기)
+        const PIECE_W = 80; 
+        const PIECE_H = 60;
+        // 조각 내부의 실제 그림 시작 오프셋 (요철 때문에 그림이 밀리는 정도)
+        const OFFSET_X = 10; 
+        const OFFSET_Y = 10;
 
-        // 주사위 점 패턴 설정
-        function setDiceDots(number) {
-            // 3D 주사위에서는 회전으로 면을 보여주므로 이 함수는 불필요
-            // 대신 주사위 회전 설정 함수 사용
-        }
+        const SNAP_TOLERANCE = 20;
 
-        // 주사위를 특정 면으로 회전
-        function rotateDiceToFace(face) {
-            const diceWrapper = document.getElementById('diceWrapper');
-            const rotations = {
-                1: 'rotateX(0deg) rotateY(0deg)',
-                2: 'rotateX(0deg) rotateY(-90deg)',
-                3: 'rotateX(-90deg) rotateY(0deg)',
-                4: 'rotateX(90deg) rotateY(0deg)',
-                5: 'rotateX(0deg) rotateY(90deg)',
-                6: 'rotateX(0deg) rotateY(180deg)'
-            };
-            diceWrapper.style.transform = rotations[face];
-        }
+        let activePiece = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+        let completedCountry = null;
 
-        // 그리드 생성
-        function createGrid() {
-            const grid = document.getElementById('grid');
-            countries.forEach((country, index) => {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.index = index;
-                
-                if (country === null) {
-                    // 빈 칸은 투명하게
-                    cell.style.border = 'none';
-                    cell.style.backgroundColor = 'transparent';
-                    cell.style.cursor = 'default';
-                } else {
-                    const countryName = document.createElement('div');
-                    countryName.className = 'country-name';
-                    countryName.textContent = country;
-                    
-                    const flag = document.createElement('img');
-                    flag.className = 'flag-image';  
-                    flag.src = `flags/${country}.svg`;  // 파일 이름은 국가명과 동일하게!
-                    flag.alt = `${country} 국기`;
-                    
-                    cell.appendChild(countryName);
-                    cell.appendChild(flag);
-                }
-                
-                grid.appendChild(cell);
+        function init() {
+            const container = document.getElementById('puzzle-container');
+            countries.forEach(country => {
+                createPuzzleForCountry(country, container);
             });
-            
-            updatePawnPosition();
         }
 
-        // 이동 경로 정의 (row, col 형식)
-        const movementPath = [
-            {row: 0, col: 0}, // 1,1
-            {row: 0, col: 1}, // 1,2
-            {row: 0, col: 2}, // 1,3
-            {row: 0, col: 3}, // 1,4
-            {row: 0, col: 4}, // 1,5
-            {row: 1, col: 4}, // 2,5
-            {row: 2, col: 4}, // 3,5
-            {row: 2, col: 3}, // 3,4
-            {row: 2, col: 2}, // 3,3
-            {row: 2, col: 1}, // 3,2
-            {row: 2, col: 0}, // 3,1
-            {row: 1, col: 0}  // 2,1
-        ];
-
-        // 현재 경로상의 위치 인덱스
-        let pathIndex = 0;
-
-        // 그리드 인덱스를 행/열로 변환
-        function indexToRowCol(index) {
-            const row = Math.floor(index / 5);
-            const col = index % 5;
-            return { row, col };
-        }
-
-        // 행/열을 그리드 인덱스로 변환
-        function rowColToIndex(row, col) {
-            return row * 5 + col;
-        }
-
-        // 다음 위치 계산 (정해진 경로를 따라)
-        function getNextPosition() {
-            // 경로를 따라 다음 위치로 이동
-            pathIndex = (pathIndex + 1) % movementPath.length;
-            const nextPos = movementPath[pathIndex];
-            return rowColToIndex(nextPos.row, nextPos.col);
-        }
-
-        // 말의 위치 업데이트
-        function updatePawnPosition() {
-            const cells = document.querySelectorAll('.cell');
-            const targetCell = cells[currentPosition];
-            const rect = targetCell.getBoundingClientRect();
-            const gridRect = document.getElementById('grid').getBoundingClientRect();
-            
-            const pawn = document.getElementById('pawn');
-            pawn.style.left = (rect.left - gridRect.left + rect.width / 2 - 15) + 'px';
-            pawn.style.top = (rect.top - gridRect.top + 10) + 'px';
-            
-            // 선택된 칸 하이라이트
-            cells.forEach(cell => cell.classList.remove('selected'));
-            targetCell.classList.add('selected');
-            
-            selectedCountry = countries[currentPosition];
-        }
-
-        // 주사위 굴리기
-        function rollDice() {
-            if (isRolling) return;
-            
-            isRolling = true;
-            document.getElementById('confirmButton').disabled = true;
-            document.getElementById('message').textContent = '';
-            
-            const diceWrapper = document.getElementById('diceWrapper');
-            
-            // 최종 주사위 눈 결정
-            const finalNumber = Math.floor(Math.random() * 6) + 1;
-            
-            // 각 면을 앞으로 가져오는 정확한 회전
-            // 기본 상태에서 dice-face-1이 앞을 향하고 있음
-            // dice-face-1: rotateY(0deg) translateZ(25px) -> 0도에서 앞면
-            // dice-face-2: rotateY(90deg) translateZ(25px) -> -90도 회전하면 앞으로
-            // dice-face-3: rotateX(90deg) translateZ(25px) -> -90도 X회전하면 앞으로
-            // dice-face-4: rotateX(-90deg) translateZ(25px) -> 90도 X회전하면 앞으로
-            // dice-face-5: rotateY(-90deg) translateZ(25px) -> 90도 Y회전하면 앞으로
-            // dice-face-6: rotateY(180deg) translateZ(25px) -> -180도 또는 180도 Y회전하면 앞으로
-            
-            const finalRotations = {
-                1: { x: 0, y: 0 },        // dice-face-1 (1점): rotateY(0deg) 
-                2: { x: 90, y: 0 },       // dice-face-2 (2점): rotateX(-90deg) -> 큐브를 X=90으로
-                3: { x: 0, y: 90 },       // dice-face-3 (3점): rotateY(-90deg) -> 큐브를 Y=90으로
-                4: { x: 0, y: -90 },      // dice-face-4 (4점): rotateY(90deg) -> 큐브를 Y=-90으로
-                5: { x: -90, y: 0 },      // dice-face-5 (5점): rotateX(90deg) -> 큐브를 X=-90으로
-                6: { x: 0, y: 180 }       // dice-face-6 (6점): rotateY(180deg)
-            };
-            
-            const targetRot = finalRotations[finalNumber];
-            
-            // 여러 바퀴 회전 추가 (360도 배수만 사용)
-            const extraSpins = 2;
-            const finalRotX = targetRot.x + (360 * extraSpins);
-            const finalRotY = targetRot.y + (360 * extraSpins);
-            
-            // Z축 회전은 0으로 고정
-            const finalRotZ = 0;
-            
-            // 랜덤 착지 위치 계산
-            const randomX = Math.random() * 200 - 100;
-            const randomY = Math.random() * 100 - 50;
-            
-            // CSS 변수로 최종 회전값과 위치 설정
-            diceWrapper.style.setProperty('--final-rot-x', `${finalRotX}deg`);
-            diceWrapper.style.setProperty('--final-rot-y', `${finalRotY}deg`);
-            diceWrapper.style.setProperty('--final-rot-z', `${finalRotZ}deg`);
-            diceWrapper.style.setProperty('--land-x', `${randomX}px`);
-            diceWrapper.style.setProperty('--land-y', `${randomY}px`);
-            
-            // 초기 위치로 리셋 (왼쪽 위로)
-            diceWrapper.style.transform = 'translateX(-150px) translateY(-100px) translateZ(100px)';
-            
-            setTimeout(() => {
-                diceWrapper.classList.add('rolling');
-                
-                // 애니메이션이 끝나면 최종 상태를 직접 설정
-                setTimeout(() => {
-                    diceWrapper.classList.remove('rolling');
-                    // 정확한 최종 회전값 적용 (추가 회전 제거)
-                    diceWrapper.style.transform = `translateX(${randomX}px) translateY(${randomY}px) translateZ(0px) rotateX(${targetRot.x}deg) rotateY(${targetRot.y}deg) rotateZ(0deg)`;
+        function createPuzzleForCountry(country, container) {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const piece = document.createElement('div');
+                    piece.classList.add('puzzle-piece');
                     
-                    // 말 이동
-                    setTimeout(() => {
-                        movePawn(finalNumber);
-                    }, 300);
-                }, 1200);
-            }, 100);
-        }
+                    // ★ 중요: 위치에 따른 클래스 추가 (SVG clip-path 연결용)
+                    piece.classList.add(`pos-${r}-${c}`);
+                    
+                    piece.dataset.country = country.code;
+                    piece.dataset.r = r;
+                    piece.dataset.c = c;
+                    
+                    // 스타일 및 배경 이미지 설정
+                    // piece.style.backgroundImage = `url('images/${country.code}.svg')`; // SVG 사용 시 주석 해제
+                    piece.style.backgroundColor = country.color;
+                    piece.innerText = country.code;
 
-        // 말 이동
-        function movePawn(steps) {
-            let moved = 0;
-            const moveInterval = setInterval(() => {
-                if (moved < steps) {
-                    // 다음 경로 위치로 이동
-                    pathIndex = (pathIndex + 1) % movementPath.length;
-                    const nextPos = movementPath[pathIndex];
-                    currentPosition = rowColToIndex(nextPos.row, nextPos.col);
-                    
-                    // 빈 칸이면 카운트하지 않고 계속 이동
-                    if (countries[currentPosition] === null) {
-                        // moved는 증가시키지 않음
-                    } else {
-                        // 실제 칸이면 카운트
-                        moved++;
-                    }
-                    
-                    updatePawnPosition();
-                } else {
-                    clearInterval(moveInterval);
-                    isRolling = false;
-                    document.getElementById('confirmButton').disabled = false;
-                    document.getElementById('message').textContent = 
-                        `${selectedCountry}에 도착했습니다! 이 국가를 선택하시겠습니까?`;
+                    // ★ 배경 위치 계산 업데이트 ★
+                    // 조각이 실제 격자보다 크고 요철이 있으므로, 배경 이미지를 약간 이동시켜야 중앙에 맞습니다.
+                    // 원래 위치에서 OFFSET 만큼을 빼서 이미지를 왼쪽/위로 당깁니다.
+                    const bgX = -(c * GRID_W) + OFFSET_X;
+                    const bgY = -(r * GRID_H) + OFFSET_Y;
+                    piece.style.backgroundPosition = `${bgX}px ${bgY}px`;
+
+                    // 랜덤 배치
+                    const x = Math.random() * (window.innerWidth - PIECE_W);
+                    const y = Math.random() * (window.innerHeight - PIECE_H);
+                    piece.style.left = `${x}px`;
+                    piece.style.top = `${y}px`;
+
+                    // 이벤트 리스너
+                    piece.addEventListener('mousedown', onMouseDown);
+                    piece.addEventListener('touchstart', onTouchStart, {passive: false});
+
+                    container.appendChild(piece);
                 }
-            }, 400);
+            }
         }
 
-        // 국가 선택 완료
-        function confirmSelection() {
-            alert(`${selectedCountry}(으)로 회원가입을 진행합니다!`);
-            // 여기에 실제 회원가입 로직 추가
-            // 예: window.location.href = '/signup?country=' + selectedCountry;
+        // --- 드래그 앤 드롭 (이전 코드와 동일) ---
+        function onMouseDown(e) { startDrag(e.target, e.clientX, e.clientY); }
+        function onTouchStart(e) { e.preventDefault(); startDrag(e.target, e.touches[0].clientX, e.touches[0].clientY); }
+
+        function startDrag(element, clientX, clientY) {
+            if(element.classList.contains('snapped')) return;
+            activePiece = element;
+            const rect = activePiece.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+            activePiece.style.zIndex = 1000;
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchmove', onTouchMove, {passive: false});
+            document.addEventListener('touchend', onMouseUp);
         }
 
-        // 초기화
-        createGrid();
-        // 초기 주사위는 중앙에 표시
-        const diceWrapper = document.getElementById('diceWrapper');
-        diceWrapper.style.transform = 'translateX(0px) translateY(0px) rotateX(0deg) rotateY(0deg)';
+        function onMouseMove(e) { if (!activePiece) return; movePiece(e.clientX, e.clientY); }
+        function onTouchMove(e) { if (!activePiece) return; e.preventDefault(); movePiece(e.touches[0].clientX, e.touches[0].clientY); }
+
+        function movePiece(clientX, clientY) {
+            const x = clientX - dragOffsetX;
+            const y = clientY - dragOffsetY;
+            activePiece.style.left = `${x}px`;
+            activePiece.style.top = `${y}px`;
+        }
+
+        function onMouseUp() {
+            if (!activePiece) return;
+            checkSnap(activePiece);
+            activePiece.style.zIndex = '';
+            activePiece = null;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMove);
+            document.removeEventListener('touchend', onMouseUp);
+        }
+
+        // --- 스냅 및 완성 체크 (로직 업데이트) ---
+        function checkSnap(piece) {
+            const currentR = parseInt(piece.dataset.r);
+            const currentC = parseInt(piece.dataset.c);
+            const countryCode = piece.dataset.country;
+            const siblings = document.querySelectorAll(`.puzzle-piece[data-country="${countryCode}"]`);
+            
+            siblings.forEach(sibling => {
+                if (sibling === piece) return;
+                const targetR = parseInt(sibling.dataset.r);
+                const targetC = parseInt(sibling.dataset.c);
+
+                // ★ 거리 계산 업데이트 ★
+                // 실제 조각 크기(PIECE_W/H)가 아닌 원래 격자 크기(GRID_W/H)를 기준으로 거리를 계산해야 합니다.
+                const idealDistX = (targetC - currentC) * GRID_W;
+                const idealDistY = (targetR - currentR) * GRID_H;
+
+                const currentRect = piece.getBoundingClientRect();
+                const siblingRect = sibling.getBoundingClientRect();
+                const distDiffX = Math.abs((siblingRect.left - currentRect.left) - idealDistX);
+                const distDiffY = Math.abs((siblingRect.top - currentRect.top) - idealDistY);
+
+                if (distDiffX < SNAP_TOLERANCE && distDiffY < SNAP_TOLERANCE) {
+                    piece.style.left = `${siblingRect.left - idealDistX}px`;
+                    piece.style.top = `${siblingRect.top - idealDistY}px`;
+                    checkCompletion(countryCode);
+                }
+            });
+        }
+
+        function checkCompletion(countryCode) {
+            const pieces = Array.from(document.querySelectorAll(`.puzzle-piece[data-country="${countryCode}"]`));
+            const basePiece = pieces[0];
+            const baseRect = basePiece.getBoundingClientRect();
+            const baseR = parseInt(basePiece.dataset.r);
+            const baseC = parseInt(basePiece.dataset.c);
+            let isComplete = true;
+
+            for(let i=1; i<pieces.length; i++) {
+                const p = pieces[i];
+                const rect = p.getBoundingClientRect();
+                const r = parseInt(p.dataset.r);
+                const c = parseInt(p.dataset.c);
+                // 완성 체크도 GRID 크기 기준
+                const idealX = baseRect.left + (c - baseC) * GRID_W;
+                const idealY = baseRect.top + (r - baseR) * GRID_H;
+                if (Math.abs(rect.left - idealX) > 5 || Math.abs(rect.top - idealY) > 5) {
+                    isComplete = false;
+                    break;
+                }
+            }
+
+            if (isComplete) {
+                // 완성된 조각들을 맨 위로 올림
+                pieces.forEach(p => p.style.zIndex = 1500);
+                const countryName = countries.find(c => c.code === countryCode).name;
+                showModal(countryName, countryCode);
+            }
+        }
+
+        // --- 모달 처리 (이전과 동일) ---
+        function showModal(name, code) {
+            completedCountry = code;
+            document.getElementById('result-text').innerText = `${name} 국기 완성!`;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function confirmNationality(isMyCountry) {
+            const modal = document.getElementById('modal');
+            modal.style.display = 'none';
+            const pieces = document.querySelectorAll(`.puzzle-piece[data-country="${completedCountry}"]`);
+
+            if (isMyCountry) {
+                alert(`환영합니다! ${completedCountry} 국적으로 진행합니다.`);
+            } else {
+                alert(`${completedCountry} 국기 퍼즐이 제거됩니다.`);
+                pieces.forEach(p => p.remove());
+            }
+        }
+
+        init();
     </script>
 </body>
 </html>
