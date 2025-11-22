@@ -3,154 +3,237 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>국기 퍼즐 회원가입 (Real Shapes)</title>
+    <title>Flag Puzzle Signup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-color: #F5F5F7;
+            --text-main: #1D1D1F;
+            --text-sub: #86868B;
+            --shadow-piece: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+            --shadow-drag: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.2));
+        }
+
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #222;
-            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-color);
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
             user-select: none;
+            color: var(--text-main);
         }
 
+        /* 안내 문구 */
         #instruction {
             position: absolute;
-            top: 20px; left: 50%; transform: translateX(-50%);
-            color: white; text-align: center; z-index: 1000; pointer-events: none;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            top: 40px; left: 50%; transform: translateX(-50%);
+            text-align: center; z-index: 100; pointer-events: none;
+            opacity: 0; animation: fadeIn 1.5s ease-out forwards;
+            width: 100%;
+        }
+        #instruction h2 {
+            font-size: 14px; font-weight: 600; letter-spacing: 0.05em;
+            text-transform: uppercase; color: var(--text-sub); margin: 0 0 8px 0;
+        }
+        #instruction p {
+            font-size: 22px; font-weight: 400; color: var(--text-main);
+            margin: 0; letter-spacing: -0.02em; line-height: 1.4;
+        }
+        #instruction .highlight {
+            color: #FF3B30; font-weight: 600;
         }
 
-        /* --- 퍼즐 조각 스타일 업데이트 --- */
+        /* 퍼즐 조각 */
         .puzzle-piece {
             position: absolute;
-            /* 원래 격자 크기(60x40)보다 조각을 더 크게 만듭니다.
-               튀어나온 요철(Tab)을 표현하기 위한 여백이 필요하기 때문입니다.
-            */
-            width: 80px;
-            height: 60px;
-            
-            /* 전체 국기 크기도 비율에 맞춰 조정 */
-            background-size: 180px 120px; 
-            
+            width: 80px; height: 60px;
             cursor: grab;
-            /* clip-path를 사용하면 기본 box-shadow가 잘리므로 filter drop-shadow 사용 */
-            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.5));
-            transition: transform 0.1s;
-            
-            /* flex 설정은 텍스트 표시용 (이미지 사용시 제거 가능) */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: rgba(255,255,255,0.8);
-            font-size: 10px;
-            font-weight: bold;
-            text-shadow: 1px 1px 2px black;
+            filter: var(--shadow-piece);
+            transition: transform 0.1s, filter 0.2s; 
+            background-repeat: no-repeat;
+            box-sizing: border-box;
+        }
+
+        .puzzle-piece.fading {
+            transition: all 0.8s cubic-bezier(0.6, -0.28, 0.735, 0.045);
         }
 
         .puzzle-piece:active {
-            cursor: grabbing;
-            transform: scale(1.05); /* 클릭 시 약간 커짐 */
-            z-index: 999 !important;
+            cursor: grabbing; 
+            transform: scale(1.1); 
+            filter: var(--shadow-drag); 
+            z-index: 9999 !important;
+            transition: none; 
         }
-
+        
         .snapped {
-            pointer-events: none;
-            filter: none; /* 스냅되면 그림자 제거 */
-            z-index: 1;
+            pointer-events: none; filter: none; z-index: 1; 
+            transition: left 0.2s ease-out, top 0.2s ease-out;
         }
 
-        /* --- SVG Clip-Path 연결 --- */
-        /* 각 위치별(행-열)로 미리 정의된 SVG 경로를 clip-path로 지정합니다.
-           이 경로들이 실제 퍼즐 모양을 만듭니다.
-        */
-        .pos-0-0 { clip-path: url(#clip-0-0); }
-        .pos-0-1 { clip-path: url(#clip-0-1); }
-        .pos-0-2 { clip-path: url(#clip-0-2); }
-        .pos-1-0 { clip-path: url(#clip-1-0); }
-        .pos-1-1 { clip-path: url(#clip-1-1); }
-        .pos-1-2 { clip-path: url(#clip-1-2); }
-        .pos-2-0 { clip-path: url(#clip-2-0); }
-        .pos-2-1 { clip-path: url(#clip-2-1); }
-        .pos-2-2 { clip-path: url(#clip-2-2); }
+        /* 토스트 메시지 */
+        #toast {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: rgba(255,255,255,0.9); color: #1D1D1F;
+            padding: 14px 28px; border-radius: 50px;
+            font-size: 15px; font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            opacity: 0; pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 3000;
+            backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.05);
+        }
+        #toast.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
 
-
-        /* 결과 모달 (이전과 동일) */
+        /* 최종 결과 모달 */
         #modal {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 2000;
-            justify-content: center; align-items: center; flex-direction: column; color: white;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px);
+            z-index: 2000; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.5s ease;
         }
-        button {
-            padding: 10px 20px; margin-top: 20px; font-size: 16px; cursor: pointer;
-            background: #4CAF50; color: white; border: none; border-radius: 5px;
+        .modal-content {
+            background: white; padding: 60px 80px; border-radius: 40px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.12); text-align: center;
+            transform: scale(0.95); animation: popUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            border: 1px solid rgba(0,0,0,0.05);
         }
+        .modal-content h1 { font-size: 36px; margin: 0 0 12px 0; color: #1D1D1F; letter-spacing: -0.03em; }
+        .modal-content p { font-size: 18px; color: #86868B; margin-bottom: 40px; }
+        .confirm-btn {
+            background: #1D1D1F; color: white; border: none;
+            padding: 18px 48px; font-size: 16px; border-radius: 20px;
+            cursor: pointer; font-weight: 600; transition: transform 0.2s, background 0.2s;
+        }
+        .confirm-btn:hover { background: #333; transform: scale(1.02); }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+        @keyframes popUp { to { transform: scale(1); } }
+        #svg-definitions { position: absolute; width: 0; height: 0; }
     </style>
 </head>
 <body>
-
-    <svg width="0" height="0" style="position:absolute;">
-        <defs>
-            <clipPath id="clip-0-0" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0 Z"></path></clipPath>
-            <clipPath id="clip-0-1" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
-            <clipPath id="clip-0-2" clipPathUnits="objectBoundingBox"><path d="M0,0 H1 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
-            <clipPath id="clip-1-0" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0 Z"></path></clipPath>
-            <clipPath id="clip-1-1" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
-            <clipPath id="clip-1-2" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V1 H0.65 C0.65,1 0.63,0.9 0.55,0.9 C0.47,0.9 0.45,1 0.45,1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
-            <clipPath id="clip-2-0" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0 V0 Z"></path></clipPath>
-            <clipPath id="clip-2-1" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V0.35 C1,0.35 0.9,0.37 0.9,0.45 C0.9,0.53 1,0.55 1,0.55 V1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
-            <clipPath id="clip-2-2" clipPathUnits="objectBoundingBox"><path d="M0,0 H0.45 C0.45,0 0.47,0.1 0.55,0.1 C0.63,0.1 0.65,0 0.65,0 H1 V1 H0 V0.55 C0,0.55 0.1,0.53 0.1,0.45 C0.1,0.37 0,0.35 0,0.35 V0 Z"></path></clipPath>
-        </defs>
-    </svg>
+    <svg id="svg-definitions"><defs id="svg-defs-container"></defs></svg>
 
     <div id="instruction">
-        <h2>국적 확인 퍼즐</h2>
-        <p>조각을 맞춰 국기를 완성하세요.</p>
+        <h2>Nationality Selection</h2>
+        <p>자신의 국기가 <span class="highlight">아닌</span> 것을 맞춰 제거하세요.<br>마지막에 남은 국기가 국적으로 선택됩니다.</p>
     </div>
 
+    <div id="toast"></div>
     <div id="puzzle-container"></div>
 
     <div id="modal">
-        <h1 id="result-text">국기 완성!</h1>
-        <p id="result-sub">이 국가는 당신의 국적인가요?</p>
-        <div style="display:flex; gap:10px;">
-            <button onclick="confirmNationality(true)">내 국적입니다 (가입)</button>
-            <button onclick="confirmNationality(false)" style="background:#ff5555">아닙니다 (제거)</button>
+        <div class="modal-content">
+            <h1 id="final-country-name">Korea</h1>
+            <p>당신의 국적으로 선택되었습니다.</p>
+            <button class="confirm-btn" onclick="alert('회원가입 프로세스로 이동합니다.')">가입 완료</button>
         </div>
     </div>
 
     <script>
-        // 1. 데이터 및 설정
-        // (테스트를 위해 국가 수를 줄였습니다. 실제 사용 시 원래 목록을 사용하세요)
-        const countries = [
-            { code: 'KR', name: '한국', color: '#003478' }, 
-            { code: 'US', name: '미국', color: '#3C3B6E' },
-            { code: 'JP', name: '일본', color: '#BC002D' },
-            // ... 나머지 국가들
-        ];
-
-        const ROWS = 3;
-        const COLS = 3;
-        // 원래 격자 크기 (배경 이미지 계산용)
+        // --- 설정값 ---
+        const ROWS = 3; 
+        const COLS = 4;
         const GRID_W = 60; 
         const GRID_H = 40;
-        // 실제 조각 크기 (요철 포함 CSS 크기)
+        const TOTAL_W = COLS * GRID_W;
+        const TOTAL_H = ROWS * GRID_H;
+        
         const PIECE_W = 80; 
         const PIECE_H = 60;
-        // 조각 내부의 실제 그림 시작 오프셋 (요철 때문에 그림이 밀리는 정도)
+        const PAD_X = 10 / PIECE_W;
+        const PAD_Y = 10 / PIECE_H;
         const OFFSET_X = 10; 
         const OFFSET_Y = 10;
 
-        const SNAP_TOLERANCE = 20;
+        const allCountries = [
+            { code: 'DE', name: '독일', file: '독일' },
+            { code: 'RU', name: '러시아', file: '러시아' },
+            { code: 'US', name: '미국', file: '미국' },
+            { code: 'BR', name: '브라질', file: '브라질' },
+            { code: 'SY', name: '시리아', file: '시리아' },
+            { code: 'GB', name: '영국', file: '영국' },
+            { code: 'IN', name: '인도', file: '인도' },
+            { code: 'JP', name: '일본', file: '일본' },
+            { code: 'CN', name: '중국', file: '중국' },
+            { code: 'CA', name: '캐나다', file: '캐나다' },
+            { code: 'KE', name: '케냐', file: '케냐' },
+            { code: 'KR', name: '한국', file: '한국' },
+            { code: 'AU', name: '호주', file: '호주' }
+        ];
 
-        let activePiece = null;
-        let dragOffsetX = 0;
-        let dragOffsetY = 0;
-        let completedCountry = null;
+        const MAX_DISPLAY_COUNT = 5;
+
+        // ★ 수정됨: 한국 무조건 포함 로직 ★
+        function getRandomCountries() {
+            // 1. 한국(KR) 찾기
+            const korea = allCountries.find(c => c.code === 'KR');
+            
+            // 2. 한국을 제외한 나머지 국가들
+            const others = allCountries.filter(c => c.code !== 'KR');
+            
+            // 3. 나머지 국가들 랜덤 섞기
+            const shuffledOthers = others.sort(() => 0.5 - Math.random());
+            
+            // 4. 한국 + 나머지 중에서 (MAX-1)개 선택 = 총 MAX개(5개)
+            const selected = [korea, ...shuffledOthers.slice(0, MAX_DISPLAY_COUNT - 1)];
+            
+            // 5. 최종 리스트를 한 번 더 섞음 (한국이 항상 첫 번째에 나오지 않게)
+            return selected.sort(() => 0.5 - Math.random());
+        }
+
+        const activeCountries = getRandomCountries();
+
+        // --- 이하 로직 동일 ---
+        function generateShapesForCountry(code) {
+            let vJoints = [], hJoints = [];
+            for(let r=0; r<ROWS; r++) {
+                let row = []; for(let c=0; c<COLS-1; c++) row.push(Math.random() > 0.5 ? 1 : -1);
+                vJoints.push(row);
+            }
+            for(let r=0; r<ROWS-1; r++) {
+                let row = []; for(let c=0; c<COLS; c++) row.push(Math.random() > 0.5 ? 1 : -1);
+                hJoints.push(row);
+            }
+            let svgPaths = "";
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<COLS; c++) {
+                    let top = (r === 0) ? 0 : -1 * hJoints[r-1][c];
+                    let right = (c === COLS-1) ? 0 : vJoints[r][c];
+                    let bottom = (r === ROWS-1) ? 0 : hJoints[r][c];
+                    let left = (c === 0) ? 0 : -1 * vJoints[r][c-1];
+                    let d = getPiecePath(top, right, bottom, left);
+                    svgPaths += `<clipPath id="clip-${code}-${r}-${c}" clipPathUnits="objectBoundingBox"><path d="${d}"></path></clipPath>`;
+                }
+            }
+            return svgPaths;
+        }
+        function getPiecePath(top, right, bottom, left) {
+            const x0 = PAD_X, x1 = 1 - PAD_X, y0 = PAD_Y, y1 = 1 - PAD_Y;
+            let d = `M ${x0},${y0} `;
+            d += drawSideH(x0, y0, x1, y0, top) + drawSideV(x1, y0, x1, y1, right) + drawSideH(x1, y1, x0, y1, bottom) + drawSideV(x0, y1, x0, y0, left);
+            d += "Z"; return d;
+        }
+        function drawSideH(sx, sy, ex, ey, type) {
+            if (type === 0) return `L ${ex},${ey} `;
+            const midX = (sx + ex) / 2, dist = ex - sx, sign = type * (dist > 0 ? -1 : 1);
+            const tabH = 0.15 * sign, neckW = 0.15 * dist, headW = 0.08 * dist, midY = sy + tabH;
+            return `L ${midX - neckW},${sy} C ${midX - headW},${midY} ${midX + headW},${midY} ${midX + neckW},${sy} L ${ex},${ey} `;
+        }
+        function drawSideV(sx, sy, ex, ey, type) {
+            if (type === 0) return `L ${ex},${ey} `;
+            const midY = (sy + ey) / 2, dist = ey - sy, sign = type * (dist > 0 ? 1 : -1);
+            const tabW = 0.15 * sign * (PIECE_H / PIECE_W), neckH = 0.15 * dist, headH = 0.08 * dist, midX = sx + tabW;
+            return `L ${sx},${midY - neckH} C ${midX},${midY - headH} ${midX},${midY + headH} ${sx},${midY + neckH} L ${ex},${ey} `;
+        }
 
         function init() {
             const container = document.getElementById('puzzle-container');
-            countries.forEach(country => {
+            const defs = document.getElementById('svg-defs-container');
+            activeCountries.forEach(country => {
+                defs.innerHTML += generateShapesForCountry(country.code);
                 createPuzzleForCountry(country, container);
             });
         }
@@ -159,158 +242,134 @@
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     const piece = document.createElement('div');
-                    piece.classList.add('puzzle-piece');
-                    
-                    // ★ 중요: 위치에 따른 클래스 추가 (SVG clip-path 연결용)
-                    piece.classList.add(`pos-${r}-${c}`);
-                    
+                    piece.className = 'puzzle-piece';
                     piece.dataset.country = country.code;
-                    piece.dataset.r = r;
-                    piece.dataset.c = c;
+                    piece.dataset.r = r; piece.dataset.c = c;
                     
-                    // 스타일 및 배경 이미지 설정
-                    // piece.style.backgroundImage = `url('images/${country.code}.svg')`; // SVG 사용 시 주석 해제
-                    piece.style.backgroundColor = country.color;
-                    piece.innerText = country.code;
-
-                    // ★ 배경 위치 계산 업데이트 ★
-                    // 조각이 실제 격자보다 크고 요철이 있으므로, 배경 이미지를 약간 이동시켜야 중앙에 맞습니다.
-                    // 원래 위치에서 OFFSET 만큼을 빼서 이미지를 왼쪽/위로 당깁니다.
+                    piece.style.backgroundImage = `url('flags/${country.file}.svg')`;
+                    piece.style.backgroundSize = `${TOTAL_W}px ${TOTAL_H}px`;
+                    piece.style.clipPath = `url(#clip-${country.code}-${r}-${c})`;
+                    
                     const bgX = -(c * GRID_W) + OFFSET_X;
                     const bgY = -(r * GRID_H) + OFFSET_Y;
                     piece.style.backgroundPosition = `${bgX}px ${bgY}px`;
 
-                    // 랜덤 배치
                     const x = Math.random() * (window.innerWidth - PIECE_W);
                     const y = Math.random() * (window.innerHeight - PIECE_H);
-                    piece.style.left = `${x}px`;
-                    piece.style.top = `${y}px`;
+                    piece.style.left = `${x}px`; piece.style.top = `${y}px`;
 
-                    // 이벤트 리스너
                     piece.addEventListener('mousedown', onMouseDown);
                     piece.addEventListener('touchstart', onTouchStart, {passive: false});
-
                     container.appendChild(piece);
                 }
             }
         }
 
-        // --- 드래그 앤 드롭 (이전 코드와 동일) ---
+        let activePiece = null, dragOffsetX = 0, dragOffsetY = 0;
+        const SNAP_TOLERANCE = 25;
+
         function onMouseDown(e) { startDrag(e.target, e.clientX, e.clientY); }
         function onTouchStart(e) { e.preventDefault(); startDrag(e.target, e.touches[0].clientX, e.touches[0].clientY); }
-
-        function startDrag(element, clientX, clientY) {
-            if(element.classList.contains('snapped')) return;
-            activePiece = element;
-            const rect = activePiece.getBoundingClientRect();
-            dragOffsetX = clientX - rect.left;
-            dragOffsetY = clientY - rect.top;
+        function startDrag(el, cx, cy) {
+            if(el.classList.contains('snapped')) return;
+            activePiece = el; 
+            const r = activePiece.getBoundingClientRect();
+            dragOffsetX = cx - r.left; dragOffsetY = cy - r.top;
             activePiece.style.zIndex = 1000;
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-            document.addEventListener('touchmove', onTouchMove, {passive: false});
-            document.addEventListener('touchend', onMouseUp);
+            document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchmove', onTouchMove, {passive: false}); document.addEventListener('touchend', onMouseUp);
         }
-
         function onMouseMove(e) { if (!activePiece) return; movePiece(e.clientX, e.clientY); }
         function onTouchMove(e) { if (!activePiece) return; e.preventDefault(); movePiece(e.touches[0].clientX, e.touches[0].clientY); }
-
-        function movePiece(clientX, clientY) {
-            const x = clientX - dragOffsetX;
-            const y = clientY - dragOffsetY;
-            activePiece.style.left = `${x}px`;
-            activePiece.style.top = `${y}px`;
-        }
-
+        function movePiece(cx, cy) { activePiece.style.left = (cx - dragOffsetX) + 'px'; activePiece.style.top = (cy - dragOffsetY) + 'px'; }
         function onMouseUp() {
-            if (!activePiece) return;
-            checkSnap(activePiece);
-            activePiece.style.zIndex = '';
-            activePiece = null;
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
-            document.removeEventListener('touchmove', onTouchMove);
-            document.removeEventListener('touchend', onMouseUp);
+            if (!activePiece) return; checkSnap(activePiece);
+            activePiece.style.zIndex = ''; activePiece = null;
+            document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onMouseUp);
         }
 
-        // --- 스냅 및 완성 체크 (로직 업데이트) ---
         function checkSnap(piece) {
-            const currentR = parseInt(piece.dataset.r);
-            const currentC = parseInt(piece.dataset.c);
-            const countryCode = piece.dataset.country;
-            const siblings = document.querySelectorAll(`.puzzle-piece[data-country="${countryCode}"]`);
-            
-            siblings.forEach(sibling => {
-                if (sibling === piece) return;
-                const targetR = parseInt(sibling.dataset.r);
-                const targetC = parseInt(sibling.dataset.c);
-
-                // ★ 거리 계산 업데이트 ★
-                // 실제 조각 크기(PIECE_W/H)가 아닌 원래 격자 크기(GRID_W/H)를 기준으로 거리를 계산해야 합니다.
-                const idealDistX = (targetC - currentC) * GRID_W;
-                const idealDistY = (targetR - currentR) * GRID_H;
-
-                const currentRect = piece.getBoundingClientRect();
-                const siblingRect = sibling.getBoundingClientRect();
-                const distDiffX = Math.abs((siblingRect.left - currentRect.left) - idealDistX);
-                const distDiffY = Math.abs((siblingRect.top - currentRect.top) - idealDistY);
-
-                if (distDiffX < SNAP_TOLERANCE && distDiffY < SNAP_TOLERANCE) {
-                    piece.style.left = `${siblingRect.left - idealDistX}px`;
-                    piece.style.top = `${siblingRect.top - idealDistY}px`;
-                    checkCompletion(countryCode);
+            const r = parseInt(piece.dataset.r), c = parseInt(piece.dataset.c), code = piece.dataset.country;
+            const siblings = document.querySelectorAll(`.puzzle-piece[data-country="${code}"]`);
+            siblings.forEach(sib => {
+                if (sib === piece) return;
+                const tr = parseInt(sib.dataset.r), tc = parseInt(sib.dataset.c);
+                const idealDX = (tc - c) * GRID_W, idealDY = (tr - r) * GRID_H;
+                const rect = piece.getBoundingClientRect(), sibRect = sib.getBoundingClientRect();
+                
+                if (Math.abs((sibRect.left - rect.left) - idealDX) < SNAP_TOLERANCE &&
+                    Math.abs((sibRect.top - rect.top) - idealDY) < SNAP_TOLERANCE) {
+                    piece.style.left = (sibRect.left - idealDX) + 'px';
+                    piece.style.top = (sibRect.top - idealDY) + 'px';
+                    checkCompletion(code);
                 }
             });
         }
 
-        function checkCompletion(countryCode) {
-            const pieces = Array.from(document.querySelectorAll(`.puzzle-piece[data-country="${countryCode}"]`));
-            const basePiece = pieces[0];
-            const baseRect = basePiece.getBoundingClientRect();
-            const baseR = parseInt(basePiece.dataset.r);
-            const baseC = parseInt(basePiece.dataset.c);
-            let isComplete = true;
-
+        function checkCompletion(code) {
+            const pieces = Array.from(document.querySelectorAll(`.puzzle-piece[data-country="${code}"]`));
+            const base = pieces[0], baseR = parseInt(base.dataset.r), baseC = parseInt(base.dataset.c), baseRect = base.getBoundingClientRect();
+            let complete = true;
             for(let i=1; i<pieces.length; i++) {
-                const p = pieces[i];
-                const rect = p.getBoundingClientRect();
-                const r = parseInt(p.dataset.r);
-                const c = parseInt(p.dataset.c);
-                // 완성 체크도 GRID 크기 기준
-                const idealX = baseRect.left + (c - baseC) * GRID_W;
-                const idealY = baseRect.top + (r - baseR) * GRID_H;
-                if (Math.abs(rect.left - idealX) > 5 || Math.abs(rect.top - idealY) > 5) {
-                    isComplete = false;
-                    break;
-                }
+                const p = pieces[i], r = parseInt(p.dataset.r), c = parseInt(p.dataset.c), rect = p.getBoundingClientRect();
+                const idealX = baseRect.left + (c - baseC) * GRID_W, idealY = baseRect.top + (r - baseR) * GRID_H;
+                if (Math.abs(rect.left - idealX) > 5 || Math.abs(rect.top - idealY) > 5) { complete = false; break; }
             }
 
-            if (isComplete) {
-                // 완성된 조각들을 맨 위로 올림
-                pieces.forEach(p => p.style.zIndex = 1500);
-                const countryName = countries.find(c => c.code === countryCode).name;
-                showModal(countryName, countryCode);
+            if(complete) {
+                pieces.forEach(p => { 
+                    p.style.pointerEvents = 'none'; p.style.zIndex = 1500; 
+                    p.classList.add('fading'); 
+                });
+                
+                const countryName = activeCountries.find(c => c.code === code).name;
+                showToast(`${countryName} 국기 제거 완료`);
+
+                setTimeout(() => {
+                    pieces.forEach(p => {
+                        p.style.opacity = '0';
+                        p.style.transform = 'scale(0.8) translateY(50px)';
+                    });
+                    setTimeout(() => {
+                        pieces.forEach(p => p.remove());
+                        checkRemainingCountries();
+                    }, 800);
+                }, 500);
             }
         }
 
-        // --- 모달 처리 (이전과 동일) ---
-        function showModal(name, code) {
-            completedCountry = code;
-            document.getElementById('result-text').innerText = `${name} 국기 완성!`;
-            document.getElementById('modal').style.display = 'flex';
+        function checkRemainingCountries() {
+            const remainingCodes = new Set();
+            document.querySelectorAll('.puzzle-piece').forEach(p => { remainingCodes.add(p.dataset.country); });
+
+            if (remainingCodes.size === 1) {
+                const winnerCode = [...remainingCodes][0];
+                const winnerName = activeCountries.find(c => c.code === winnerCode).name;
+                
+                const remainingPieces = document.querySelectorAll('.puzzle-piece');
+                remainingPieces.forEach(p => {
+                    p.style.transition = 'all 1s ease';
+                    p.style.zIndex = 2000;
+                    p.style.filter = 'drop-shadow(0 0 30px rgba(0,0,0,0.2))';
+                });
+
+                setTimeout(() => { showFinalModal(winnerName); }, 1000);
+            }
         }
 
-        function confirmNationality(isMyCountry) {
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 2000);
+        }
+
+        function showFinalModal(name) {
+            document.getElementById('final-country-name').innerText = name;
             const modal = document.getElementById('modal');
-            modal.style.display = 'none';
-            const pieces = document.querySelectorAll(`.puzzle-piece[data-country="${completedCountry}"]`);
-
-            if (isMyCountry) {
-                alert(`환영합니다! ${completedCountry} 국적으로 진행합니다.`);
-            } else {
-                alert(`${completedCountry} 국기 퍼즐이 제거됩니다.`);
-                pieces.forEach(p => p.remove());
-            }
+            modal.style.display = 'flex';
+            setTimeout(() => modal.style.opacity = '1', 10);
         }
 
         init();
